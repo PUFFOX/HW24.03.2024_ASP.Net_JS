@@ -1,0 +1,246 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <h2>List of items</h2>
+    <table>
+        <thead>
+            <tr>
+                <td>NAME</td>
+                <td>DESC</td>
+                <td>PRICE</td>
+            </tr>
+        </thead>
+        <tbody id="itemList">
+            <!-- Додано ідентифікатор itemList -->
+        </tbody>
+    </table>
+
+    <h2>Add new item</h2>
+    <form id="addItemForm">
+        <label for="itemName">Name:</label><br />
+        <input type="text" id="itemName" name="itemName" /><br />
+        <label for="itemDesc">Description:</label><br />
+        <input type="text" id="itemDesc" name="itemDesc" /><br />
+        <label for="itemPrice">Price:</label><br />
+        <input type="number" name="itemPrice" id="itemPrice" /> <br />
+        <button type="submit">Save</button>
+    </form>
+
+
+
+    <script>
+
+        
+        async function getAllItems()
+        {
+            try {
+                const response = await fetch('/api/items',
+                    {
+                    method: 'GET',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch items');
+                }
+
+                // Парсимо відповідь сервера у форматі JSON
+                const items = await response.json();
+                console.log('Items:', items);
+
+                // Оновлюємо список товарів на сторінці
+                const itemList = document.getElementById("itemList");
+                itemList.innerHTML = ""; // Очищаємо список перед оновленням
+                items.forEach(item =>
+                {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML =
+                    `
+                        <td>${item.name}</td>
+                        <td>${item.description}</td>
+                        <td>${item.price}</td>
+                        <button onclick="editItem(${item.id})">Edit</button>
+                        <button onclick="deleteItem(${item.id})">Delete</button> 
+                    `;
+                    itemList.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error fetching items:', error);
+            }
+        }
+
+        // Викликаємо функцію getAllItems при завантаженні сторінки, щоб отримати список товарів
+        window.onload = getAllItems;
+
+        // Обробник події для форми додавання нового товару
+        document.getElementById("addItemForm").addEventListener("submit", async function (event)
+        {
+   
+
+            event.preventDefault(); // Перешкоджаємо стандартному поведінці форми
+
+            // Отримуємо значення з полів форми
+            const itemName = document.getElementById("itemName").value;
+            const itemDesc = document.getElementById("itemDesc").value;
+            const itemPrice = document.getElementById("itemPrice").value;
+
+            // Створюємо об'єкт з даними нового товару
+            const newItemData =
+            {
+                name: itemName,
+                description: itemDesc,
+                price: parseFloat(itemPrice) // Перетворюємо ціну в число
+            };
+
+            // Викликаємо функцію для додавання нового товару
+            await addNewItem(newItemData);
+
+            // Очищаємо форму після успішного додавання товару
+            document.getElementById("addItemForm").reset();
+
+            // Оновлюємо список товарів
+            await getAllItems();
+        });
+
+        // Функція для відправки запиту POST для додавання нового товару
+        async function addNewItem(itemData) {
+            try {
+                const response = await fetch('/api/items', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(itemData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add item');
+                }
+
+                // Парсимо відповідь сервера у форматі JSON
+                const newItem = await response.json();
+                console.log('New item added:', newItem);
+                return newItem;
+            } catch (error) {
+                console.error('Error adding item:', error);
+            }
+        }
+
+
+
+
+
+
+        // Функція для відправки запиту PUT для оновлення існуючого товару
+        async function updateItem(itemId, updatedItemData) {
+            try {
+                const response = await fetch(`/api/items/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedItemData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update item');
+                }
+
+                // Парсимо відповідь сервера у форматі JSON
+                const updatedItem = await response.json();
+                console.log('Item updated:', updatedItem);
+                return updatedItem;
+            } catch (error) {
+                console.error('Error updating item:', error);
+            }
+        }
+
+        // Обробник події для форми оновлення товару
+        document.getElementById("updateItemForm").addEventListener("submit", async function (event) {
+            event.preventDefault(); // Перешкоджаємо стандартному поведінці форми
+
+            // Отримуємо значення з полів форми
+            const itemId = document.getElementById("itemId").value;
+            const itemName = document.getElementById("itemName").value;
+            const itemDesc = document.getElementById("itemDesc").value;
+            const itemPrice = document.getElementById("itemPrice").value;
+
+            // Створюємо об'єкт з оновленими даними товару
+            const updatedItemData = {
+                name: itemName,
+                description: itemDesc,
+                price: parseFloat(itemPrice) // Перетворюємо ціну в число
+            };
+
+            // Викликаємо функцію для оновлення товару
+            await updateItem(itemId, updatedItemData);
+
+            // Очищаємо форму після успішного оновлення товару
+            document.getElementById("updateItemForm").reset();
+
+            // Сховуємо форму після оновлення товару
+            document.getElementById("updateItemForm").style.display = "none";
+
+            // Оновлюємо список товарів
+            await getAllItems();
+        });
+
+
+        async function editItem(itemId) {
+            try {
+                const response = await fetch(`/api/items/${itemId}`, {
+                    method: 'GET',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch item details');
+                }
+
+                const item = await response.json();
+
+                // Заповнюємо форму даними обраного товару
+                document.getElementById("itemName").value = item.name;
+                document.getElementById("itemDesc").value = item.description;
+                document.getElementById("itemPrice").value = item.price;
+
+                // Можна також зберегти ID товару у прихованому полі форми
+                document.getElementById("itemId").value = itemId;
+
+
+                console.log('Editing item:', item);
+            } catch (error) {
+                console.error('Error editing item:', error);
+            }
+        }
+
+
+
+        async function deleteItem(itemId) {
+            try {
+                const response = await fetch(`/api/items/${itemId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete item');
+                }
+
+                console.log('Item deleted successfully');
+                // Опціонально, оновіть список товарів після видалення товару
+                await getAllItems();
+            } catch (error) {
+                console.error('Error deleting item:', error);
+            }
+        }
+
+
+    </script>
+
+
+
+
+</body>
+</html>
